@@ -47,7 +47,7 @@ end
 function create_static_page(title,template) -- Creates a route function for a static page with an etlua template.
 	return function(self)
 		self.page_title=title or error('No title given (template: '..template..')')
-		return { render = template}
+		return {render = template}
 	end
 end
 
@@ -57,6 +57,7 @@ app:get("register","/register",create_static_page("register","register"))
 app:get("login","/login",create_static_page("login","login"))
 
 ---------- Dynamic Routes
+------ User management
 ---- User creation
 app:match("/create-user",capture_errors({ -- Called from /register, handles POST request to create a user.
 	function(self)
@@ -74,12 +75,12 @@ app:match("/create-user",capture_errors({ -- Called from /register, handles POST
 		end
 		createUser(Users,self.req.params_post.username,self.req.params_post.password,self.req.params_post.email)
 		self.success=true
-		return { render = 'register' }
+		return {render = 'register'}
 	end,
 	on_error = create_static_page("register","register")
 }))
 
---  User login
+----  User login
 app:match("/login-user",capture_errors({
 	function(self)
 		self.page_title='login'
@@ -100,3 +101,32 @@ app:match("/login-user",capture_errors({
 	end,
 	on_error=create_static_page("login","login")
 }))
+
+------ Admin stuff
+app:match('admin_profile','/admin/user/:profile',function(self) -- User profile viewing
+	if not self.session.signed_in
+		or not checkUserAdmin(self.session.username) then
+			return {render = 'no_perms'}
+		end
+	end
+	self.page_title="Admin profile for UID "..self.params.profile
+	return {render = 'admin/member_profile'}
+end)
+app:match('admin_members','/admin/user',function(self)
+	if not self.session.signed_in
+		or not checkUserAdmin(self.session.username) then
+			return {render = 'no_perms'}
+		end
+	end
+	self.page_title='Member list'
+	return {render = "admin/members"}
+end)
+app:match('admin','/admin',function(self)
+	if not self.session.signed_in
+		or not checkUserAdmin(self.session.username) then
+			return {render = 'no_perms'}
+		end
+	end
+	self.page_title='Admin'
+	return {render = 'admin/index'}
+end)
